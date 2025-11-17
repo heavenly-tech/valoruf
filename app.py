@@ -14,29 +14,42 @@ from dotenv import load_dotenv
 # Use the new API client
 from uf_api import fetch_uf_value_from_api
 
+# --- Config and Environment Loading ---
+# Load environment variables (including CMF_API_KEY and FRONTEND_ORIGIN)
+load_dotenv() 
+
+CACHE_FILENAME = "uf_cache.csv"
+CACHE_EXPIRATION_SECONDS = 3600  # 1 hour
+
+# Get config variables directly from environment
+api_key = os.getenv('CMF_API_KEY')
+# Use the environment variable for origin, falling back to '*' for max compatibility (dev/testing)
+ALLOWED_ORIGIN = os.getenv('FRONTEND_ORIGIN', '*') 
+
+
 # --- Application Setup ---
 app = Flask(__name__, static_folder='.', static_url_path='')
-CORS(app)
 
-# --- Config ---
-CACHE_FILENAME = "uf_cache.csv"
-api_key = None
+# Configure CORS explicitly for security/dynamism
+CORS(app, resources={
+    # Apply this specific configuration to all routes starting with /api/
+    r"/api/*": {
+        "origins": ALLOWED_ORIGIN,
+        "methods": ["GET", "POST", "OPTIONS"],
+        "allow_headers": ["Content-Type", "Authorization"]
+    }
+})
+
+if not api_key or api_key == "YOUR_API_KEY_HERE":
+    print("Warning: CMF_API_KEY environment variable not set or is a placeholder.")
+else:
+    print("API key loaded from environment.")
 
 # --- In-memory Cache ---
 data_cache = {}
-CACHE_EXPIRATION_SECONDS = 3600  # 1 hour
+
 
 # --- Cache and Key Loading ---
-
-def load_api_key():
-    """Loads the CMF API key from environment variable."""
-    load_dotenv()
-    global api_key
-    api_key = os.getenv('CMF_API_KEY')
-    if not api_key or api_key == "YOUR_API_KEY_HERE":
-        print("Warning: CMF_API_KEY environment variable not set or is a placeholder.")
-    else:
-        print("API key loaded from environment.")
 
 def load_cache_from_csv():
     """Loads the cache from the CSV file into the in-memory dictionary."""
@@ -106,9 +119,7 @@ def get_uf_for_date(date_str):
     target_date = date_from_str(date_str)
     if not target_date:
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
-    if target_date > datetime.now().date():
-        return jsonify({"error": "Cannot request future dates."}), 400
-
+    
     value, cached = get_uf_value_with_cache(target_date)
     if value is None:
         return jsonify({"error": f"Could not retrieve UF value for {date_str}."}), 404
@@ -130,10 +141,6 @@ def get_uf_for_range(start_date_str, end_date_str):
         return jsonify({"error": "Invalid date format. Use YYYY-MM-DD."}), 400
     if start_date > end_date:
         return jsonify({"error": "Start date cannot be after end date."}), 400
-    if end_date > datetime.now().date():
-        return jsonify({"error": "Cannot request future dates."}), 400
-    if (end_date - start_date).days > 365:
-        return jsonify({"error": "Date range too large. Maximum 365 days allowed."}), 400
 
     results = []
     current_date = start_date
@@ -176,10 +183,8 @@ def get_cached_uf_values():
 @app.route("/", methods=["GET"])
 def serve_frontend():
     """Serves the static index.html file."""
-    return send_from_directory("templates", "index.html")
-
+    return send_from_directory("static", "index.html")
 
 if __name__ == "__main__":
-    load_api_key()
     load_cache_from_csv()
     app.run(debug=True, port=5000)

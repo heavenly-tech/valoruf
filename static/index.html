@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valor UF</title>
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -42,7 +41,6 @@
 
     <div id="app-container" class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden">
         
-        <!-- Header Section -->
         <div class="p-6 bg-gray-50 border-b border-gray-200">
             <h1 class="text-3xl font-extrabold text-primary-blue text-center">
                 Valor UF
@@ -61,12 +59,10 @@
             </ul>
         </div>
 
-        <!-- Query Forms Section -->
         <div class="p-6 border-b border-gray-200">
             <h2 class="text-xl font-bold text-text-dark mb-4">Búsqueda de Datos</h2>
             
             <div class="grid md:grid-cols-2 gap-6">
-                <!-- Single Date Lookup Form -->
                 <div class="p-4 border border-gray-200 rounded-lg bg-white">
                     <h3 class="font-semibold mb-2 text-gray-700">Búsqueda por Fecha Única</h3>
                     <form id="single-date-form" class="flex flex-col gap-3">
@@ -79,7 +75,6 @@
                     </form>
                 </div>
                 
-                <!-- Date Range Lookup Form -->
                 <div class="p-4 border border-gray-200 rounded-lg bg-white">
                     <h3 class="font-semibold mb-2 text-gray-700">Búsqueda por Rango de Fechas</h3>
                     <form id="range-date-form" class="flex flex-col gap-3">
@@ -110,10 +105,8 @@
             </div>
         </div>
 
-        <!-- Data Display Area -->
         <div class="p-6">
             <div id="loading" class="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
-                <!-- Spinner SVG for loading -->
                 <svg class="animate-spin h-6 w-6 mx-auto mb-3 text-primary-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -121,7 +114,6 @@
                 Obteniendo datos del backend...
             </div>
 
-            <!-- Table Container (The scrollable area) -->
             <div class="table-scroll-area hidden" id="table-wrapper">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead>
@@ -131,8 +123,7 @@
                         </tr>
                     </thead>
                     <tbody id="data-table-body" class="bg-white divide-y divide-gray-100">
-                        <!-- Data rows will be injected here by JavaScript -->
-                    </tbody>
+                        </tbody>
                 </table>
             </div>
 
@@ -140,10 +131,14 @@
         </div>
     </div>
 
-    <!-- JavaScript Logic to Fetch and Render Data -->
     <script>
-        // Use the Flask development URL
-        const API_BASE_URL = 'http://127.0.0.1:5000/api/uf';
+        // --- START OF CHANGES ---
+        // Dynamically determine the base host (protocol://domain:port)
+        const BASE_HOST = window.location.protocol + '//' + window.location.host;
+        // The API endpoints are all under /api/uf, make this the base URL
+        const API_BASE_URL = BASE_HOST + '/api/uf';
+        // --- END OF CHANGES ---
+        
         const tableBody = document.getElementById('data-table-body');
         const loadingElement = document.getElementById('loading');
         const tableWrapper = document.getElementById('table-wrapper');
@@ -177,8 +172,14 @@
             try {
                 const response = await fetch(url);
                 if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                    // Attempt to parse JSON error message
+                    try {
+                        const err = await response.json();
+                        throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                    } catch {
+                        // If response body is not JSON, use generic error
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
                 }
                 const data = await response.json();
                 
