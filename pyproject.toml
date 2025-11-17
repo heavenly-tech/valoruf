@@ -1,0 +1,27 @@
+# pyproject.toml
+# Valoruf Full-Stack Application Configuration
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "valoruf"
+version = "0.1.0"
+description = "Valoruf scraping and API service powered by Flask."
+authors = [
+    { name = "Your Name", email = "your.email@example.com" },
+]
+license = { text = "MIT" }
+keywords = ["flask", "api", "uv"]
+
+# PRODUCTION DEPENDENCIES: Packages needed for the app to run
+dependencies = [
+    "Flask>=2.3.0",
+    "Flask-CORS>=4.0.0", # Essential for allowing the frontend to access the API
+    "requests",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["foo"]

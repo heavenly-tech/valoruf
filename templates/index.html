@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Valor UF</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        'primary-blue': '#1e40af', 
+                        'text-dark': '#1f2937',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom styles for scrollable table */
+        .table-scroll-area {
+            max-height: 70vh;
+            overflow-y: auto;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+        .table-scroll-area thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f9fafb;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4 font-sans antialiased">
+
+    <div id="app-container" class="w-full max-w-4xl bg-white rounded-2xl shadow-2xl transition-all duration-300 overflow-hidden">
+        
+        <!-- Header Section -->
+        <div class="p-6 bg-gray-50 border-b border-gray-200">
+            <h1 class="text-3xl font-extrabold text-primary-blue text-center">
+                Valor UF
+            </h1>
+            <p class="text-sm text-gray-500 text-center mt-1">
+                Datos obtenidos usando la API de CMF Chile <a href="https://api.cmfchile.cl/">api.cmfchile.cl</a>.
+            </p>
+            <h2 class="text-lg font-bold text-text-dark mt-4">Funciones API:</h2>
+            <ul class="list-disc list-inside text-sm text-gray-600">
+                <li><code>/api/uf/&lt;fecha&gt;</code> - Obtiene el valor de la UF para una fecha específica (formato AAAA-MM-DD).</li>
+                <li><code>/api/uf/&lt;fecha_inicio&gt;/&lt;fecha_fin&gt;</code> - Obtiene los valores de la UF para un rango de fechas.</li>
+                <li><code>/api/uf/cached</code> - Obtiene todos los valores almacenados en el caché.</li>
+                <li class="mt-2">Por defecto, todos los endpoints devuelven formato JSON.</li>
+                <li>Puedes usar <code>?format=json</code> o <code>?format=csv</code> en los endpoints de rango de fecha y de caché.</li>
+                <li>El endpoint de fecha única soporta <code>?format=json</code> y <code>?format=raw</code> (texto plano).</li>
+            </ul>
+        </div>
+
+        <!-- Query Forms Section -->
+        <div class="p-6 border-b border-gray-200">
+            <h2 class="text-xl font-bold text-text-dark mb-4">Búsqueda de Datos</h2>
+            
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Single Date Lookup Form -->
+                <div class="p-4 border border-gray-200 rounded-lg bg-white">
+                    <h3 class="font-semibold mb-2 text-gray-700">Búsqueda por Fecha Única</h3>
+                    <form id="single-date-form" class="flex flex-col gap-3">
+                        <input type="date" id="single-date-input" required 
+                               class="p-2 border border-gray-300 rounded-lg w-full focus:ring-primary-blue focus:border-primary-blue">
+                        <button type="submit" 
+                                class="px-4 py-2 bg-primary-blue text-white font-semibold rounded-lg hover:bg-blue-700 transition">
+                            Buscar Día
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- Date Range Lookup Form -->
+                <div class="p-4 border border-gray-200 rounded-lg bg-white">
+                    <h3 class="font-semibold mb-2 text-gray-700">Búsqueda por Rango de Fechas</h3>
+                    <form id="range-date-form" class="flex flex-col gap-3">
+                        <div class="flex gap-2">
+                            <input type="date" id="start-date-input" required placeholder="Fecha de Inicio"
+                                   class="p-2 border border-gray-300 rounded-lg w-1/2 focus:ring-primary-blue focus:border-primary-blue">
+                            <input type="date" id="end-date-input" required placeholder="Fecha de Fin"
+                                   class="p-2 border border-gray-300 rounded-lg w-1/2 focus:ring-primary-blue focus:border-primary-blue">
+                        </div>
+                        <button type="submit" 
+                                class="px-4 py-2 bg-primary-blue text-white font-semibold rounded-lg hover:bg-blue-700 transition">
+                            Buscar Rango
+                        </button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button id="show-today-btn" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition text-gray-700">
+                    Mostrar Hoy
+                </button>
+                <button id="show-last-7-days-btn" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition text-gray-700">
+                    Mostrar Últimos 7 Días
+                </button>
+                <button id="show-cached-btn" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition text-gray-700">
+                    Mostrar Todos los Valores en Caché
+                </button>
+            </div>
+        </div>
+
+        <!-- Data Display Area -->
+        <div class="p-6">
+            <div id="loading" class="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
+                <!-- Spinner SVG for loading -->
+                <svg class="animate-spin h-6 w-6 mx-auto mb-3 text-primary-blue" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Obteniendo datos del backend...
+            </div>
+
+            <!-- Table Container (The scrollable area) -->
+            <div class="table-scroll-area hidden" id="table-wrapper">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead>
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-semibold text-text-dark uppercase tracking-wider">Fecha</th>
+                            <th class="px-6 py-3 text-right text-xs font-semibold text-text-dark uppercase tracking-wider">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody id="data-table-body" class="bg-white divide-y divide-gray-100">
+                        <!-- Data rows will be injected here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="error-message" class="text-red-600 mt-4 hidden p-3 border border-red-300 rounded-lg bg-red-50 text-sm font-medium"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Logic to Fetch and Render Data -->
+    <script>
+        // Use the Flask development URL
+        const API_BASE_URL = 'http://127.0.0.1:5000/api/uf';
+        const tableBody = document.getElementById('data-table-body');
+        const loadingElement = document.getElementById('loading');
+        const tableWrapper = document.getElementById('table-wrapper');
+        const errorMessageElement = document.getElementById('error-message');
+        
+        const singleDateForm = document.getElementById('single-date-form');
+        const rangeDateForm = document.getElementById('range-date-form');
+        const showTodayBtn = document.getElementById('show-today-btn');
+        const showLast7DaysBtn = document.getElementById('show-last-7-days-btn');
+        const showCachedBtn = document.getElementById('show-cached-btn');
+
+
+        /**
+         * Formats a date string.
+         * @param {string} dateString 
+         * @returns {string}
+         */
+        function formatDate(dateString) {
+            return dateString; // API returns in 'YYYY-MM-DD'
+        }
+
+        /**
+         * Fetches data from the API based on the constructed URL and renders the table.
+         * @param {string} url - The full API URL.
+         */
+        async function fetchDataAndRender(url) {
+            loadingElement.classList.remove('hidden');
+            tableWrapper.classList.add('hidden');
+            errorMessageElement.classList.add('hidden');
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.error || `HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+                
+                let dataArray = Array.isArray(data) ? data : [data];
+
+                let html = '';
+                
+                if (dataArray.length === 0 || (dataArray.length > 0 && dataArray[0].date === undefined)) {
+                     html = `<tr><td colspan="2" class="px-6 py-6 text-center text-gray-500 italic bg-gray-50">No se encontraron datos para las fechas solicitadas.</td></tr>`;
+                } else {
+                    // Sort data by date descending (newest first)
+                    dataArray.sort((a, b) => b.date.localeCompare(a.date));
+
+                    dataArray.forEach(item => {
+                        const formattedDate = formatDate(item.date);
+                        const value = typeof item.value === 'number' ? item.value.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A';
+
+                        html += `
+                            <tr class="transition duration-100 even:bg-gray-50 hover:bg-gray-100">
+                                <td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-text-dark">${formattedDate}</td>
+                                <td class="px-6 py-3 whitespace-nowrap text-sm text-right font-mono text-primary-blue font-bold">${value}</td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                tableBody.innerHTML = html;
+                tableWrapper.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error fetching data from API:", error);
+                errorMessageElement.textContent = `Error al obtener los datos: ${error.message}`;
+                errorMessageElement.classList.remove('hidden');
+            } finally {
+                loadingElement.classList.add('hidden');
+            }
+        }
+        
+        // --- Event Listeners for Forms ---
+
+        // 1. Single Date Search
+        singleDateForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const dateInput = document.getElementById('single-date-input').value;
+            if (dateInput) {
+                const url = `${API_BASE_URL}/${dateInput}`;
+                fetchDataAndRender(url);
+            }
+        });
+
+        // 2. Date Range Search
+        rangeDateForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const startDate = document.getElementById('start-date-input').value;
+            const endDate = document.getElementById('end-date-input').value;
+            
+            if (startDate && endDate) {
+                const url = `${API_BASE_URL}/${startDate}/${endDate}`;
+                fetchDataAndRender(url);
+            }
+        });
+
+        // 3. Show Today Button
+        showTodayBtn.addEventListener('click', () => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const url = `${API_BASE_URL}/${todayStr}`;
+            fetchDataAndRender(url);
+        });
+
+        // 4. Show Last 7 Days Button
+        showLast7DaysBtn.addEventListener('click', () => {
+             const endDate = new Date();
+             const startDate = new Date();
+             startDate.setDate(endDate.getDate() - 6);
+             
+             const endDateStr = endDate.toISOString().split('T')[0];
+             const startDateStr = startDate.toISOString().split('T')[0];
+
+             const url = `${API_BASE_URL}/${startDateStr}/${endDateStr}`;
+             fetchDataAndRender(url);
+        });
+
+        // 5. Show All Cached Values Button
+        showCachedBtn.addEventListener('click', () => {
+            const url = `${API_BASE_URL}/cached`;
+            fetchDataAndRender(url);
+        });
+
+        // Fetch default data on initial page load (last 7 days)
+        document.addEventListener('DOMContentLoaded', () => {
+            showLast7DaysBtn.click();
+        });
+    </script>
+</body>
+</html>

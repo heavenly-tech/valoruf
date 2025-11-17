@@ -1,0 +1,9 @@
+services:
+  valoruf:
+    container_name: valoruf
+    build: .
+    restart: unless-stopped
+    volumes:
+      - ./uf_cache.csv:/app/uf_cache.csv
+    ports:
+      - "9000:5000"
