@@ -28,7 +28,9 @@ ALLOWED_ORIGIN = os.getenv('FRONTEND_ORIGIN', '*')
 
 
 # --- Application Setup ---
-app = Flask(__name__, static_folder='.', static_url_path='')
+# FIX: Removed static_folder='.', static_url_path=''.
+# Flask now uses defaults: static_folder='static' mapped to static_url_path='/static'.
+app = Flask(__name__) 
 
 # Configure CORS explicitly for security/dynamism
 CORS(app, resources={
@@ -142,6 +144,9 @@ def get_uf_for_range(start_date_str, end_date_str):
     if start_date > end_date:
         return jsonify({"error": "Start date cannot be after end date."}), 400
 
+    if (end_date - start_date).days > 365:
+        return jsonify({"error": "Date range too large. Maximum 365 days allowed."}), 400
+
     results = []
     current_date = start_date
     while current_date <= end_date:
@@ -182,7 +187,9 @@ def get_cached_uf_values():
 
 @app.route("/", methods=["GET"])
 def serve_frontend():
-    """Serves the static index.html file."""
+    """Serves the static index.html file from the static folder."""
+    # This route is needed because 'index.html' is inside the 'static' folder 
+    # but must be served from the root URL ('/').
     return send_from_directory("static", "index.html")
 
 if __name__ == "__main__":
